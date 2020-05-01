@@ -37,21 +37,20 @@ def testFiles():
     file_list = loader.files(start_date=pd.Timestamp('2019-01-01 00:00:00'),
                             end_date=pd.Timestamp('2019-01-02 23:59:59'))
     assert_equal(len(file_list), 48)
-    assert_equal(gtfs_loader.gtfs.datetime(file_list[-1]),\
+    assert_equal(gtfs_loader.gtfs_datetime(os.path.basename(file_list[-1])),\
                  pd.Timestamp('2019-01-02 23:01:00'))
     
     # Load across months
     file_list = loader.files(start_date=pd.Timestamp('2019-01-01 00:00:00'),
                             end_date=pd.Timestamp('2019-02-04 23:59:59'))
-    assert_equal(len(file_list), 4*2*24)
-    assert_equal(gtfs_loader.gtfs_datetime(file_list[-1]),\
-                 pd.Timestamp('2019-02-04 23:01:00'))
+    assert_equal(len(file_list), 3*2*24)
+    assert_equal(gtfs_loader.gtfs_datetime(os.path.basename(file_list[-1])),\
+                 pd.Timestamp('2019-02-03 23:01:00'))
     
-    file_times = set(map(gtfs_loader.gtfs_datetime, file_list))
+    file_times = set(map(gtfs_loader.gtfs_datetime, map(os.path.basename, file_list)))
     expected_times = set([pd.Timestamp('2019-01-01 23:01:00'),\
                          pd.Timestamp('2019-01-02 23:01:00'), \
                          pd.Timestamp('2019-01-03 23:01:00'), \
-                         pd.Timestamp('2019-01-04 23:01:00'), \
-                         pd.Timestamp('2019-02-04 23:01:00')])
-    assert(expected_times.subset(file_times))
+                         pd.Timestamp('2019-02-03 23:01:00')])
+    assert(expected_times.issubset(file_times))
         
