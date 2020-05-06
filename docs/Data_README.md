@@ -8,6 +8,7 @@ https://m.mymtaalerts.com/archive
 
 Web form for viewing historical MTA alerts.  As there seems to be no easily downloadable archive, a web scraper is needed.  I used [Selenium](https://www.selenium.dev/) with Chromium to scrape this data in monthly chunks and dumped to csv.  Please find example csv's included in the <code>data/alerts</code> directory.
 
+Look at [AlertScraper.ipynb](../Notebooks/AlertScraper.ipynb) for an example of how to do this.
 
 ### Subway Data Archive
 http://web.mta.info/developers/data/archives.html
@@ -31,6 +32,8 @@ etc...
 Each of these <code>.gtfs</code> files is a [Protocol Buffer](https://developers.google.com/protocol-buffers/docs/overview) specified by Google to relay transit data.  After the required [protobuf specifications](#MTA-GTFS-Specification) are downloaded, and compiled, parsing the protobufs is relatively straightforward.
 
 For illustration, I have computed the observed time until the next train in units of minutes, effectively ground truth for this project, and written it to <code>data/status/train_wait.h5</code> For illustration, this only includes data for Northbound N trains at Times Square 42nd St during approximate peak usage 06:00AM - 21:00PM.
+
+Look at [StatusExtractor.ipynb](../Notebooks/StatusExtractor.ipynb) for some help unzipping all these archives.
 
 ### Data validation
 - **Sanity check arrival time statistics**

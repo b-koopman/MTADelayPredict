@@ -32,6 +32,8 @@ For research, I will require historical data.  As I have not been collecting and
     - Web form for viewing historical MTA alerts
 - [Subway Data Archive](http://web.mta.info/developers/data/archives.html)
     - archive of GTFS protobufs from August 2018 - June 2019
+    
+Please see the data [README](#docs/Data_README.md) for additional color on accessing and processing this data.
 
 ## Inputs
 Using the above datasets, some light processing will be required to extract features and the predicted value for training.  Please see the [README](README.md) for information on accessing historical data.  Initial model inputs will be features related to alert message content, time of day and location of the next expected train
