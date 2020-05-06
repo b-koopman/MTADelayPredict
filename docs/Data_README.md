@@ -19,12 +19,12 @@ These are bundled into monthly zip files containing daily directories.  Unfortun
 Once decompressed, the directory layout looks like so:
 
 <code>
-├── 201811
-│   ├── 20181101
-│   │   ├── gtfs_ace_20181101_041943.gtfs
-│   │   ├── gtfs_ace_20181101_041958.gtfs
-│   │   ├── gtfs_ace_20181101_042013.gtfs
-│   │   ├── gtfs_ace_20181101_042043.gtfs
+201811/
+    20181101/
+        gtfs_ace_20181101_041943.gtfs
+        gtfs_ace_20181101_041958.gtfs
+        gtfs_ace_20181101_042013.gtfs
+        gtfs_ace_20181101_042043.gtfs
 etc...
 </code>
 

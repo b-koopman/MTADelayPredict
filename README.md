@@ -58,6 +58,7 @@ Much of this development process will be designed around "failing early" and spe
 - **Data exploration and validation**
 
 After downloading data, immediately demonstrate that data contains reasonable values, and that status alerts have a meaningful relationship with train delay time.
+For a more in-depth discussion regarding data sources, please see the data [README](#docs/Data_README.md).
 
 - **Model Selection**
 
