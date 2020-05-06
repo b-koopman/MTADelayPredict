@@ -44,9 +44,9 @@ A proposed benchmark is the scheduled train arrival time for the next expected t
 
 ## Evaluation Metrics
  
-Model performance will be evaluated on the test data set.  The proposed metric for evaluating overall model performance and performance of the benchmark is $RMSE$.  $RMSE$ will be helpful, as it will provide errors in units of the predicted variable, as it takes the square root of the $MSE$ metric[[6]](#footnote_6).  In this particular case, the $RMSE$ metric will be in units of minutes, this is much easier to think about and provides a more meaningful metric in this case.
+Model performance will be evaluated on the test data set.  The proposed metric for evaluating overall model performance and performance of the benchmark is <img src="https://render.githubusercontent.com/render/math?math=RMSE">.  <img src="https://render.githubusercontent.com/render/math?math=RMSE"> will be helpful, as it will provide errors in units of the predicted variable, as it takes the square root of the <img src="https://render.githubusercontent.com/render/math?math=MSE"> metric[[6]](#footnote_6).  In this particular case, the $RMSE$ metric will be in units of minutes, this is much easier to think about and provides a more meaningful metric in this case.
 
-An additional metric for validating the fitted model is $R^2_{adj}$ (adjusted $R^2$)  [[7]](#footnote_7).  This effectively shows the "goodness of fit" for regressive models.[[8]](#footnote_8)
+An additional metric for validating the fitted model is <img src="https://render.githubusercontent.com/render/math?math=R_{adj}^{2}"> (adjusted <img src="https://render.githubusercontent.com/render/math?math=R^{2}">)  [[7]](#footnote_7).  This effectively shows the "goodness of fit" for regressive models.[[8]](#footnote_8)
 
 ## Design and Process
 
@@ -68,7 +68,7 @@ While estimator selection fall within the scope of work for this project, I prop
 
 This project will begin investigation focused on scikit-learn[[10]](#footnote_10) ensemble regression models, with initial attention to [RandomForestRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html).
 
-Feature selection will be performed through recursive feature elimination with cross validation[[11]](#footnote_11) using $R^2_{adj}$ as the scoring criteria in order to evaluate goodness of fit while adjusting for $R^2$ inflation due to number of features[[6]]($footnote_6)[[7]](#footnote_7)
+Feature selection will be performed through recursive feature elimination with cross validation[[11]](#footnote_11) using <img src="https://render.githubusercontent.com/render/math?math=R^{2}"> as the scoring criteria in order to evaluate goodness of fit while adjusting for <img src="https://render.githubusercontent.com/render/math?math=R^{2}"> inflation due to number of features[[6]]($footnote_6)[[7]](#footnote_7)
 
 
 ### Deployment
