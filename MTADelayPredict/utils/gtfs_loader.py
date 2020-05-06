@@ -47,9 +47,9 @@ class GTFSLoader:
             yyyymmdd = str(date.year * 10000 + date.month * 100 + date.day)
             filename = 'gtfs_{}_{}_*.gtfs'.format(self.train_line, yyyymmdd)
             daily_files = glob.glob(os.path.join(self.data_dir, yyyymm, yyyymmdd, filename))
-            daily_files = [ f for f in daily_files if (gtfs_datetime(f) >= start_date and gtfs_datetime(f) <= end_date) ]
+            daily_files = [ f for f in daily_files if (gtfs_datetime(os.path.basename(f)) >= start_date and gtfs_datetime(os.path.basename(f)) <= end_date) ]
             if len(daily_files) == 0:
-                print("WARNING: no files found for {}".format(yyyymmdd))
+                print("WARNING: no files found for {} in {}".format(yyyymmdd, os.path.join(self.data_dir, yyyymm, yyyymmdd, filename)))
             file_list += daily_files
         
         return file_list
