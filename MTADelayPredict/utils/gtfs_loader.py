@@ -1,4 +1,5 @@
-from MTADelayPredict.utils.utils import grouper
+from MTADelayPredict.utils.utils import grouper, gtfs_datetime
+from MTADelayPredict.utils.merged_entity import MergedEntity
 import pandas as pd
 
 # Load in the protobuf APIs
@@ -10,16 +11,6 @@ try:
     import MTADelayPredict.protobuf.gtfs_realtime_pb2 as gtfs_realtime_pb2
 except ImportError:
     raise ImportError('gtfs_realtime_pb2 not found, make sure protobuf is compiled, see DataExploration.ipynb')
-
-def gtfs_datetime(filename):
-    import re
-    import pandas as pd
-    prog = re.compile(r'^gtfs_.+_(?P<year>[0-9]{4})(?P<month>[0-9]{2})(?P<day>[0-9]{2})_(?P<hour>[0-9]{2})(?P<minute>[0-9]{2})(?P<second>[0-9]{2})\.gtfs$')
-    m = prog.match(filename)
-    if m:
-        return pd.Timestamp(**{k:int(v) for k,v in m.groupdict().items()})
-    else:
-        raise ValueError("filename {} does not fit expected format".format(filename))
     
 # There is a problem where the vehicle entites don't provide an easily discernable stop name, just an ID
 # However, the entities are paired up in as trip_entity  and vehicle entity
@@ -38,8 +29,7 @@ def get_entities(msg, verbose=False):
                 print("Skipping entity pairing @ {}".format(pd.to_datetime(msg.header.timestamp, unit='s', utc=True).tz_convert('US/Eastern')))
             continue 
             
-        yield((trip_entity, vehicle_entity))
-
+        yield(MergedEntity(trip_entity, vehicle_entity))
 
 class GTFSLoader: 
     """
@@ -88,7 +78,7 @@ class GTFSLoader:
         
         return file_list
     
-    def load_range(self, start_date, end_date, stop_filter='.*', verbose=False):
+    def load_range(self, start_date, end_date, stop_filter='.*', route_filter='.*', verbose=False):
         """
         Load files for a given date range and return the resulting dataframe.
         This new data replaces any existing loaded data.
@@ -98,15 +88,13 @@ class GTFSLoader:
         import re
         import os
         import google.protobuf.message as message
+        import numpy as np
         
         if verbose:
             import progressbar
         
         # Get list of files
         gtfs_files = self.list_files(start_date, end_date)
-        stopped_at_df = pd.DataFrame()
-        next_scheduled_arrival_df = pd.DataFrame()
-        next_train_df = pd.DataFrame()
         
         if verbose:
             widgets = [progressbar.Percentage(), progressbar.Bar(), progressbar.Variable('entries'), progressbar.Variable('decode_errors')]
@@ -125,68 +113,47 @@ class GTFSLoader:
                 continue
 
             if verbose:
-                bar.update(i+1, entries=stopped_at_df.shape[0], decode_errors=fails)
+                bar.update(i+1, entries=self.stopped_at_df.shape[0], decode_errors=fails)
 
-            # TODO: This will be a lot cleaner once the entity data is broken into a separate class
-            for trip_entity,vehicle_entity in get_entities(msg):
-                if not vehicle_entity.vehicle.trip.Extensions[nyct_subway_pb2.nyct_trip_descriptor].is_assigned:
+            for merged_entity in get_entities(msg):
+                if not re.match(route_filter, merged_entity.route_id):
                     continue
-
-                trip_direction = vehicle_entity.vehicle.trip.Extensions[nyct_subway_pb2.nyct_trip_descriptor].direction
-                route_id = vehicle_entity.vehicle.trip.route_id
-                entity_time = pd.to_datetime(vehicle_entity.vehicle.timestamp, unit='s', utc=True)
+               
+                # If the train is specified as not assigned, don't bother processing
+                if not merged_entity.is_assigned:
+                    continue
                 
-                # If a vehicle is stopped at the desired stop, capture it
-                if vehicle_entity.vehicle.current_status == gtfs_realtime_pb2.VehiclePosition.VehicleStopStatus.STOPPED_AT:
-                    # Current stop is always the first stop_update in the trip entity as per: 
-                    # http://datamine.mta.info/sites/all/files/pdfs/GTFS-Realtime-NYC-Subway%20version%201%20dated%207%20Sep.pdf
-                    # Therefore, if a train is "STOPPED_AT", we can get the current stop_id this way
-                    if len(trip_entity.trip_update.stop_time_update) == 0:
-                        if verbose:
-                            print("Skipped vehicle entity, no stop times {}".format(trip_entity.trip_update))
-                        continue
-                    current_stop = trip_entity.trip_update.stop_time_update[0]
-                    
-                    # NOTE: Sometimes the arrival times for the current stop don't match up, this is a bit weird, look into this
-                    #    assert current_stop.arrival.time <= vehicle_entity.vehicle.timestamp
-
-                    if re.match(stop_filter, current_stop.stop_id):
-                        current_train_id = vehicle_entity.vehicle.trip.Extensions[nyct_subway_pb2.nyct_trip_descriptor].train_id
-                        stopped_at_df.loc[entity_time, current_stop.stop_id] = current_train_id
-
-                    if len(trip_entity.trip_update.stop_time_update) > 1:
-                        next_stop = trip_entity.trip_update.stop_time_update[1]
+                # If the train is stopped at a station we're looking for, set that
+                if merged_entity.is_stopped and merged_entity.is_stop_match(stop_filter, merged_entity.current_stop_id):
+                    self.stopped_at_df.loc[merged_entity.time, merged_entity.current_stop_id] = merged_entity.train_id
+                
+                # If there is a next stop specified, set the next arrival time for that station
+                # Sometimes there might be multiple trains scheduled to arrive somewhere next, so use the min
+                if merged_entity.next_stop_id and merged_entity.is_stop_match(stop_filter, merged_entity.next_stop_id):
+                    if merged_entity.time in self.next_scheduled_arrival_df.index and merged_entity.next_stop_id in self.next_scheduled_arrival_df.columns:
+                        current_val = self.next_scheduled_arrival_df.loc[merged_entity.time, merged_entity.next_stop_id]
+                        new_val = pd.to_datetime(merged_entity.next_stop_time, unit='s', utc=True)
+                        
+                        if isinstance(current_val, pd.Timestamp) and new_val < current_val:
+                            self.next_train_df.loc[merged_entity.time, merged_entity.next_stop_id] = merged_entity.train_id
+                            self.next_scheduled_arrival_df.loc[merged_entity.time, merged_entity.next_stop_id] = new_val
                     else:
-                        next_stop = None
-                else:
-                    next_stop = trip_entity.trip_update.stop_time_update[0]
-
-                # Extract next train, and when it thinks it will arrive
-                if next_stop:
-                    if re.match(stop_filter, next_stop.stop_id):
-                        # If multiple trains have a stop_id as their next stop, take whichever one thinks it is closest
-                        if entity_time in next_scheduled_arrival_df.index and next_stop.stop_id in next_scheduled_arrival_df.columns:
-                            next_scheduled_arrival_df.loc[entity_time, next_stop.stop_id] = \
-                                min(next_scheduled_arrival_df.loc[entity_time, next_stop.stop_id], pd.to_datetime(next_stop.arrival.time, unit='s', utc=True))
-                        else:
-                            next_scheduled_arrival_df.loc[entity_time, next_stop.stop_id] = \
-                                pd.to_datetime(next_stop.arrival.time, unit='s', utc=True)
-                        next_train_df.loc[entity_time, next_stop.stop_id] = \
-                            trip_entity.trip_update.trip.Extensions[nyct_subway_pb2.nyct_trip_descriptor].train_id
+                        self.next_train_df.loc[merged_entity.time, merged_entity.next_stop_id] = merged_entity.train_id
+                        self.next_scheduled_arrival_df.loc[merged_entity.time, merged_entity.next_stop_id] = \
+                            pd.to_datetime(merged_entity.next_stop_time, unit='s', utc=True)
+                
+                
         if verbose:
             bar.finish()
 
-        stopped_at_df.index = stopped_at_df.index.tz_convert('US/Eastern')
-        next_train_df.index = next_train_df.index.tz_convert('US/Eastern')
-        next_scheduled_arrival_df.index = next_scheduled_arrival_df.index.tz_convert('US/Eastern')
-        stopped_at_df.sort_index(inplace=True)
-        next_train_df.sort_index(inplace=True)
-        next_scheduled_arrival_df.sort_index(inplace=True)
-        self.stopped_at_df = stopped_at_df
-        self.next_train_df = next_train_df
-        self.next_scheduled_arrival_df = next_scheduled_arrival_df
+        self.stopped_at_df.index = self.stopped_at_df.index.tz_convert('US/Eastern')
+        self.next_train_df.index = self.next_train_df.index.tz_convert('US/Eastern')
+        self.next_scheduled_arrival_df.index = self.next_scheduled_arrival_df.index.tz_convert('US/Eastern')
+        self.stopped_at_df.sort_index(inplace=True)
+        self.next_train_df.sort_index(inplace=True)
+        self.next_scheduled_arrival_df.sort_index(inplace=True)
         
         return {'stopped_at':self.stopped_at_df, \
-                'next_train':self.next_train_df, \
+                'next_train_id':self.next_train_df, \
                 'next_scheduled_arrival': self.next_scheduled_arrival_df}
  
