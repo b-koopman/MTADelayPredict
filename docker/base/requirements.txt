@@ -1,0 +1,5 @@
+numpy
+pandas==0.25.* # Some fix from sagemaker docker setup
+tables # For h5 io
+
+
