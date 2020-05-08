@@ -15,6 +15,6 @@ COPY requirements.txt /requirements.txt
 RUN python -m pip install -r /requirements.txt && \
     rm /requirements.txt
 
-COPY test.py /test.py
+COPY download_app.py /download_app.py
 
 CMD python download_app.py
