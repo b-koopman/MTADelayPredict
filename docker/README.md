@@ -9,7 +9,7 @@ Make sure to populate secrets.txt with all your information.  Ideally this would
 ## Base
 To build the base Dockerfile:
 
-### Build
+**Build**
 <code>
 sudo docker build --tag mtadelaypredict-base:1.0 base/
 </code>
@@ -18,13 +18,19 @@ sudo docker build --tag mtadelaypredict-base:1.0 base/
 
 For downloading realtime gtfs feeds and pushing to S3 for now
 
-### Build
+**Build**
 <code>
-docker build --env-file secrets.txt --tag mtadelaypredict-rt_data:1.0 rt_data/
+docker build --build-arg mta_api_key=<MTA_API_KEY> --build-arg s3_bucket=<S3_BUCKET> --build-arg aws_access_key_id=<AWS_ACCESS_KEY_ID> --build-arg aws_secret_access_key=<AWS_SECRET_ACCESS_KEY> --tag mtadelaypredict-rt_data:1.0 rt_data/
+</code>
+
+**Run**
+This is a little hacky, but runs a loop of fetching GTFS files to s3.
+<code>
+docker run mtadelaypredict-rt_data:1.0
 </code>
 
 ## Notebook
 For running development notebook
 <code>
-docker build --env-file secrets.txt --tag mtadelaypredict-notebook:1.0 notebook/
+docker build --tag mtadelaypredict-notebook:1.0 notebook/
 </code>
