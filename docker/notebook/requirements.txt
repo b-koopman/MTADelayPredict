@@ -7,3 +7,4 @@ progressbar2
 protobuf
 matplotlib
 nose
+seaborn

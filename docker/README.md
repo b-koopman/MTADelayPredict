@@ -19,6 +19,8 @@ sudo docker build --tag mtadelaypredict-base:1.0 base/
 For downloading realtime gtfs feeds and pushing to S3 for now
 
 **Build**
+DANGER:  This will expose your MTA KEY and AWS KEY for the IAM to anyone with access to the shell history, and will be stored in one of the docker layers.  The ideal way to do this is to use the secrets server, but this gets something up and running quickly.
+
 <code>
 docker build --build-arg mta_api_key=<MTA_API_KEY> --build-arg s3_bucket=<S3_BUCKET> --build-arg aws_access_key_id=<AWS_ACCESS_KEY_ID> --build-arg aws_secret_access_key=<AWS_SECRET_ACCESS_KEY> --tag mtadelaypredict-rt_data:1.0 rt_data/
 </code>
@@ -31,6 +33,16 @@ docker run mtadelaypredict-rt_data:1.0
 
 ## Notebook
 For running development notebook
+
+**Build**
 <code>
 docker build --tag mtadelaypredict-notebook:1.0 notebook/
+</code>
+
+**Run**
+Right now this assumes that you already have a mount with a local git repository already set up.
+
+TODO: Move some of this incantation inside the docker file
+<code>
+DATA_MOUNT=<MY_DATA_MOUNT> PROJECT_MOUNT=<MY_PROJECT_MOUNT> docker run -i -t -p 8888:8888  -v $DATA_MOUNT:/data -v $PROJECT_MOUNT:/opt/project -v /tmp:/local/tmp --env-file secrets.txt sklearn-notebook:1.0 /bin/bash -c"/miniconda3/bin/jupyter lab --notebook-dir=/opt/project --ip='*' --port=8888 --no-browser --allow-root"
 </code>

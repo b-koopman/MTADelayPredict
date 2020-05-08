@@ -1,4 +1,4 @@
-FROM mtadelaypredict-base
+FROM mtadelaypredict-base:1.0
 
 # Copied from AWS sklearn docker files
 RUN apt-get update && \
@@ -15,7 +15,14 @@ RUN conda update -y conda && \
     conda install selenium && \
     conda install protobuf
     
-COPY notebook/requirements.txt /requirements.txt
+COPY requirements.txt /requirements.txt
 
 RUN python -m pip install -r /requirements.txt && \
     rm /requirements.txt
+
+ARG s3_bucket
+ENV S3_BUCKET=$s3_bucket
+ARG aws_access_key_id
+ENV aws_access_key_id=$aws_access_key_id
+ARG aws_secret_access_key
+ENV aws_secret_access_key=$aws_secret_access_key
