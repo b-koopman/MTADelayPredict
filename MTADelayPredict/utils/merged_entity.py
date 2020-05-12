@@ -80,24 +80,50 @@ class MergedEntity:
             return self._next_stop().stop_id
         else:
             return None
+    @property
+    @lru_cache(1)
+    def next_stop_time_raw(self):
+        if self._next_stop():
+            return int(self._next_stop().arrival.time) // 60
+        else:
+            return None
     
+    @property
+    @lru_cache(1)
+    def time_raw(self):
+        return int(self.vehicle_entity.vehicle.timestamp) // 60
+        
     @property
     @lru_cache(1)
     def next_stop_time(self):
         if self._next_stop():
-            return self._next_stop().arrival.time
+            pd.to_datetime(self.next_stop_time_raw, unit='m', utc=True)
         else:
             return None
     
     @property
     @lru_cache(1)
     def time(self):
-        return pd.to_datetime(self.vehicle_entity.vehicle.timestamp, unit='s', utc=True)
+        return pd.to_datetime(self.time_raw, unit='m', utc=True)
+    
+    @property
+    @lru_cache(1)
+    def train_id_str(self):
+        trip_descriptor = self.vehicle_entity.vehicle.trip.Extensions[nyct_subway_pb2.nyct_trip_descriptor]
+        return trip_descriptor.train_id
     
     @property
     @lru_cache(1)
     def train_id(self):
-        return self.vehicle_entity.vehicle.trip.Extensions[nyct_subway_pb2.nyct_trip_descriptor].train_id
+        import re
+        
+        trip_descriptor = self.vehicle_entity.vehicle.trip.Extensions[nyct_subway_pb2.nyct_trip_descriptor]
+        numerical_id = re.sub('[^0-9]', '', trip_descriptor.train_id)
+    
+        if numerical_id:
+            return int(numerical_id)
+        else:
+            return np.nan           
     
     @property
     @lru_cache(1)
@@ -109,4 +135,7 @@ class MergedEntity:
         Is this stop one of the ones we're looking for
         """
         import re
-        return re.match(stop_filter, stop_id)
+        if stop_id:
+            return re.match(stop_filter, stop_id)
+        else:
+            return False
