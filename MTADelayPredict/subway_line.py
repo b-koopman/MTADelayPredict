@@ -40,3 +40,12 @@ class SubwayLine():
 
     def end(self):
         return Stop(self.stop_list[-1], self)
+
+    def stop_idx(self, stop_id):
+        """
+        Get the index of a stop_id within a subway line
+        """
+        if stop_id not in self.stop_indices:
+            raise ValueError("{} not in SubwayLine's stops".format(stop_id))
+        return self.stop_indices[stop_id]
+

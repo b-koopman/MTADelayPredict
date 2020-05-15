@@ -80,6 +80,8 @@ class MergedEntity:
             return self._next_stop().stop_id
         else:
             return None
+
+        
     @property
     @lru_cache(1)
     def next_stop_time_raw(self):
@@ -87,6 +89,14 @@ class MergedEntity:
             return int(self._next_stop().arrival.time) // 60
         else:
             return None
+        
+    @property
+    @lru_cache(1)
+    def current_stop_time_raw(self):
+        if self._next_stop():
+            return int(self._current_stop().arrival.time)
+        else:
+            return 0
     
     @property
     @lru_cache(1)
@@ -100,6 +110,11 @@ class MergedEntity:
             pd.to_datetime(self.next_stop_time_raw, unit='m', utc=True)
         else:
             return None
+        
+    @property
+    @lru_cache(1)
+    def current_stop_time(self):
+        return pd.to_datetime(self.current_stop_time_raw, unit='s', utc=True)
     
     @property
     @lru_cache(1)

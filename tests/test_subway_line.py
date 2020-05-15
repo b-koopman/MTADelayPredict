@@ -1,5 +1,5 @@
 from nose.tools import raises, assert_raises
-from MTADelayPredict.subway_line import SubwayLine
+from MTADelayPredict.subway_line import SubwayLine, N_STOP_LIST
 
 @raises(ValueError)
 def test_wrong_direction_line():
@@ -8,6 +8,10 @@ def test_wrong_direction_line():
 @raises(ValueError)
 def test_underspecified_stops():
     bad_line = SubwayLine(['R1', 'R2'])
+
+def test_stop_idx():
+    test_line = SubwayLine(['R16N', 'R15N'])
+    assert test_line.stop_idx('R16N') == 0
 
 def test_stop_create():
     # Test creation of new stops

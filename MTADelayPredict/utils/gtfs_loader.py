@@ -38,8 +38,7 @@ def build_stop_id_index(data_dir, stop_filter='*'):
     except:
         raise Exception("stops.txt not found, Requires MTA Google transit files downloaded and extracted from http://web.mta.info/developers/data/nyct/subway/google_transit.zip to <data_dir>/google_transit")
         
-# Ordered from Coney Island - Stillwell Ave -> Astoria-Ditmars
-STOP_LIST = ['D43N', 'N10N', 'N09N', 'N08N', 'N07N', 'N06N', 'N05N', 'N04N', 'N03N', 'N02N', 'R41N', 'R40N', 'R39N', 'R36N', 'R35N', 'R34N', 'R33N', 'R32N', 'R31N', 'R30N', 'R29N', 'R28N', 'R27N', 'R26N', 'R25N', 'R24N', 'R23N', 'R22N', 'R21N', 'R20N', 'R19N', 'R18N', 'R17N', 'R16N', 'R15N', 'R14N', 'R13N', 'R11N', 'R09N', 'R08N', 'R06N', 'R05N', 'R04N', 'R03N', 'R01N']
+
 
 class GTFSLoader: 
     """
@@ -59,7 +58,11 @@ class GTFSLoader:
         e.g. gtfs_nqrw_20181209_064712.gtfs would have "nqrw" as the train_line
         """
         from collections import defaultdict
-        
+        import os
+
+        if not os.path.isdir(data_dir):
+            raise ValueError("data_dir {} does not exist, cannot load gtfs files".format(data_dir))
+
         self.data_dir = data_dir
         self.train_line = train_line
         self.train_dict = defaultdict(dict)
@@ -83,14 +86,41 @@ class GTFSLoader:
             yyyymm = str(date.year * 100 + date.month)
             yyyymmdd = str(date.year * 10000 + date.month * 100 + date.day)
             filename = 'gtfs_{}_{}_*.gtfs'.format(self.train_line, yyyymmdd)
-            daily_files = glob.glob(os.path.join(self.data_dir, yyyymm, yyyymmdd, filename))
-            daily_files = [ f for f in daily_files if (gtfs_datetime(os.path.basename(f)) >= start_date and gtfs_datetime(os.path.basename(f)) <= end_date) ]
+            gtfs_dir = os.path.join(self.data_dir, yyyymm, yyyymmdd)
+            daily_files = glob.glob( os.path.join(gtfs_dir,filename))
+            daily_files = [f for f in daily_files if (start_date <= gtfs_datetime(os.path.basename(f)) <= end_date)]
 #            if len(daily_files) == 0:
 #                print("WARNING: no files found for {} in {}".format(yyyymmdd, os.path.join(self.data_dir, yyyymm, yyyymmdd, filename)))
             file_list += daily_files
         
         return file_list
-    
+
+    # def load_range(self, start_date, end_date, stop_filter='.*', route_filter='.*', verbose=False, schedule=False):
+    #     """
+    #     Load files for a given date range and return the resulting dataframe.
+    #     This new data replaces any existing loaded data.
+    #
+    #     If verbose, it will display a progress bar
+    #     """
+    #     import re
+    #     import os
+    #     import google.protobuf.message as message
+    #     import numpy as np
+    #     from collections import defaultdict, OrderedDict
+    #
+    #     start_min = (start_date - pd.Timestamp("1970-01-01").astimezone('US/Eastern')) // pd.Timedelta('1s') // 60
+    #     end_min = (end_date - pd.Timestamp("1970-01-01").astimezone('US/Eastern')) // pd.Timedelta('1s') // 60
+    #     # Add a few minutes, since sometimes we get updates from the futures
+    #     print(end_min)
+    #     end_min += 120
+    #     print(end_min)
+    #     stop_id_index = STOP_LIST
+    #     new_stop_ids = set()
+    #     stop_id_dict = {s:i for i,s in enumerate(stop_id_index)}
+    #     stopped_at_np = np.zeros((end_min-start_min, len(stop_id_index)))
+    #     next_train_np = np.zeros((end_min-start_min, len(stop_id_index)))
+    #     next_scheduled_arrival_np = np.zeros((end_min-start_min, len(stop_id_index)))
+
     def load_range(self, start_date, end_date, stop_filter='.*', route_filter='.*', verbose=False, schedule=False):
         """
         Load files for a given date range and return the resulting dataframe.
@@ -103,40 +133,16 @@ class GTFSLoader:
         import google.protobuf.message as message
         import numpy as np
         from collections import defaultdict, OrderedDict
-        
-        start_min = (start_date - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s') // 60
-        end_min = (end_date - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s') // 60
+
+        from MTADelayPredict.subway_line import N_STOP_LIST
+
+        start_min = (start_date - pd.Timestamp("1970-01-01").tz_localize('UTC').astimezone('US/Eastern')) // pd.Timedelta('1s') // 60
+        end_min = (end_date - pd.Timestamp("1970-01-01").tz_localize('UTC').astimezone('US/Eastern')) // pd.Timedelta('1s') // 60
         # Add a few minutes, since sometimes we get updates from the futures
         print(end_min)
         end_min += 120
         print(end_min)
-        stop_id_index = STOP_LIST
-        new_stop_ids = set()
-        stop_id_dict = {s:i for i,s in enumerate(stop_id_index)}
-        stopped_at_np = np.zeros((end_min-start_min, len(stop_id_index)))
-        next_train_np = np.zeros((end_min-start_min, len(stop_id_index)))
-        next_scheduled_arrival_np = np.zeros((end_min-start_min, len(stop_id_index)))
-    
-    def load_range(self, start_date, end_date, stop_filter='.*', route_filter='.*', verbose=False, schedule=False):
-        """
-        Load files for a given date range and return the resulting dataframe.
-        This new data replaces any existing loaded data.
-        
-        If verbose, it will display a progress bar
-        """
-        import re
-        import os
-        import google.protobuf.message as message
-        import numpy as np
-        from collections import defaultdict, OrderedDict
-        
-        start_min = (start_date - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s') // 60
-        end_min = (end_date - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s') // 60
-        # Add a few minutes, since sometimes we get updates from the futures
-        print(end_min)
-        end_min += 120
-        print(end_min)
-        stop_id_index = STOP_LIST
+        stop_id_index = N_STOP_LIST
         new_stop_ids = set()
         stop_id_dict = {s:i for i,s in enumerate(stop_id_index)}
         stopped_at_np = np.zeros((end_min-start_min, len(stop_id_index)))
@@ -144,13 +150,16 @@ class GTFSLoader:
         next_scheduled_arrival_np = np.zeros((end_min-start_min, len(stop_id_index)))
         
         if schedule:
-            self.train_dict = defaultdict(OrderedDict)
-        
+            self.train_dict = defaultdict(list)
+            self.stop_dict = defaultdict(list)
+            self.time_dict = defaultdict(list)
+            
         if verbose:
             import progressbar
         
         # Get list of files
         gtfs_files = self.list_files(start_date, end_date)
+        gtfs_files.sort()
         
         if verbose:
             widgets = [progressbar.Percentage(), progressbar.Bar(), progressbar.Variable('entries'), progressbar.Variable('decode_errors')]
@@ -192,7 +201,10 @@ class GTFSLoader:
                         stopped_at_np[time_idx, stop_idx] = merged_entity.train_id
                         if schedule:
                             if merged_entity.current_stop_id not in self.train_dict[merged_entity.train_id_str]:
-                                self.train_dict[merged_entity.train_id_str][merged_entity.current_stop_id] = merged_entity.time.tz_convert('US/Eastern')
+                                #self.train_dict[merged_entity.train_id_str][merged_entity.current_stop_id] = merged_entity.time.tz_convert('US/Eastern')
+                                self.stop_dict[merged_entity.train_id_str].append(merged_entity.current_stop_id)
+                                self.time_dict[merged_entity.train_id_str].append(merged_entity.current_stop_time.tz_convert('US/Eastern'))
+                                self.train_dict[merged_entity.train_id_str].append(merged_entity.current_stop_time.tz_convert('US/Eastern'))
                     else:
                         new_stop_ids.add(merged_entity.current_stop_id)
                 
@@ -230,7 +242,7 @@ class GTFSLoader:
         ret_dict =  {'stopped_at':self.stopped_at_df, \
                     'next_train_id':self.next_train_df, \
                     'next_scheduled_arrival': self.next_scheduled_arrival_df}
-        if schedule:
-            ret_dict['schedule_df'] = pd.DataFrame.from_dict(self.train_dict)
+#        if schedule:
+#            ret_dict['schedule_df'] = pd.DataFrame.from_dict(self.train_dict)
         
         return ret_dict
