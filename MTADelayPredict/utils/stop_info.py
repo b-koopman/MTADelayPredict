@@ -10,6 +10,7 @@ class StopFile:
             import pandas as pd
             self.file_dir = file_dir
             self.df = pd.read_csv(file_dir + '/stops.txt')
+            self.df['CleanStopName'] = self.df.stop_name.map(normalize_name)
 
     instance = None
 
@@ -36,14 +37,24 @@ def stop_id2name(stop_id):
 
     return df.stop_name.iloc[idx]
 
-@lru_cache()
+def normalize_name(stop_name):
+    import re
+
+    # Remove any borough annotations
+    clean_name = re.sub(r' ?\(.*\)', '', stop_name)
+
+    clean_name = clean_name.lower()
+    clean_name = re.sub('[^0-9a-z]+', '', clean_name)
+
+    return clean_name
+
 def name2stop_ids(stop_name, stop_list=None):
     """
     :param stop_name: Name of the stop
     :return: pandas.Series of possibly matching stop_ids
     """
     df = StopFile().df
-    stop_ids = df.stop_id[df.stop_name.str.match(stop_name)]
+    stop_ids = df.stop_id[df['CleanStopName'].str.match(normalize_name(stop_name))]
     if stop_list:
         stop_set = set(stop_list)
         stop_ids = stop_ids[stop_ids.map(lambda x: x in stop_set)]

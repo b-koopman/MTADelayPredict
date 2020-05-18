@@ -13,12 +13,17 @@ RUN conda update -y conda && \
     conda install -c mlio -c conda-forge mlio-py=0.1 && \
     conda install -c anaconda scipy && \
     conda install selenium && \
-    conda install protobuf
+    conda install protobuf && \
+    conda install nodejs
     
 COPY requirements.txt /requirements.txt
 
 RUN python -m pip install -r /requirements.txt && \
     rm /requirements.txt
+
+# Set up plotly for jupyter
+RUN jupyter labextension install jupyterlab-plotly@4.7.1
+RUN jupyter labextension install @jupyter-widgets/jupyterlab-manager plotlywidget@4.7.1
 
 ARG s3_bucket
 ENV S3_BUCKET=$s3_bucket

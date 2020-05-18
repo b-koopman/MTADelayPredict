@@ -19,7 +19,8 @@ def plot_traffic(start_time, end_time, schedule_df):
         if col != 'index' and col != 'level_0':
             # g = sns.scatterplot(y='index', x=col, data=schedule_df)
             plot_df = schedule_df[['index', col]].dropna()
-            if (plot_df.shape[0] == 0 or plot_df['index'].iloc[-1] < start_time) or (plot_df['index'].iloc[0] > end_time):
+            if (plot_df.shape[0] == 0 or plot_df['index'].iloc[-1] < start_time) or (
+                    plot_df['index'].iloc[0] > end_time):
                 #            print((plot_df['index'].iloc[-1],plot_df['index'].iloc[0]), (start_time, end_time))
                 continue
 

@@ -36,7 +36,9 @@ def load_range_schedule(start_date, end_date,
 def plot_alert(alert_time, observing_stop, alert_stop,
                stop_filter, route_filter,
                title='Northbound N Trains',
-               data_dir = '../data/raw/status'
+               data_dir = '../data/raw/status',
+               start_window = 15,
+               end_window = 60,
                ):
     """
     Create a windowed plot of train traffic around a certain train alert time
@@ -49,8 +51,8 @@ def plot_alert(alert_time, observing_stop, alert_stop,
     import matplotlib.lines as mlines
     import matplotlib.pyplot as plt
 
-    start_time = alert_time - pd.Timedelta(15, unit='m')
-    end_time = alert_time + pd.Timedelta(60, unit='m')
+    start_time = alert_time - pd.Timedelta(start_window, unit='m')
+    end_time = alert_time + pd.Timedelta(end_window, unit='m')
 
     # Fetch schedule data and plot
     schedule_df = load_range_schedule(start_time, end_time, stop_filter, route_filter, data_dir)

@@ -8,3 +8,5 @@ protobuf
 matplotlib
 nose
 seaborn
+dash
+chart_studio

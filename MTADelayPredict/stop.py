@@ -66,8 +66,8 @@ class Stop:
         decrease stop by integer value "val"
         it will saturate at the end of the line to make arithmetic easier
         """
-        if not isinstance(val, int):
-            raise ValueError("Can only increase stop by an integer index, got {}".format(type(val)))
+        if isinstance(val, int):
+            raise ValueError("Can only decrease stop by an integer index got {}".format(type(val)))
         if val < 0:
             return self.__add__(-val)
         new_idx = self.stop_idx - val
