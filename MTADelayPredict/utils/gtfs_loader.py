@@ -146,8 +146,11 @@ class GTFSLoader:
         new_stop_ids = set()
         stop_id_dict = {s:i for i,s in enumerate(stop_id_index)}
         stopped_at_np = np.zeros((end_min-start_min, len(stop_id_index)))
+        stopped_at_np[:] = np.nan
         next_train_np = np.zeros((end_min-start_min, len(stop_id_index)))
+        next_train_np[:] = np.nan
         next_scheduled_arrival_np = np.zeros((end_min-start_min, len(stop_id_index)))
+        next_scheduled_arrival_np[:] = np.nan
         
         if schedule:
             self.train_dict = defaultdict(list)
@@ -217,7 +220,7 @@ class GTFSLoader:
                         current_val = next_scheduled_arrival_np[time_idx, stop_idx]
                         new_val = merged_entity.next_stop_time_raw
 
-                        if new_val < current_val:
+                        if new_val < current_val or np.isnan(current_val):
                             next_train_np[time_idx, stop_idx] = merged_entity.train_id
                             next_scheduled_arrival_np[time_idx, stop_idx] = new_val
                     else:

@@ -10,3 +10,5 @@ nose
 seaborn
 dash
 chart_studio
+redis
+flash_caching

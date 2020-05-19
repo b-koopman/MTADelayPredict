@@ -17,7 +17,7 @@ def load_range_schedule(start_date, end_date,
 
     loader = gtfs_loader.GTFSLoader(data_dir=data_dir,
                                     train_line='nqrw')
-    loader.load_range(start_date, end_date, stop_filter=stop_filter, route_filter=route_filter, verbose=True, schedule=True)
+    data = loader.load_range(start_date, end_date, stop_filter=stop_filter, route_filter=route_filter, verbose=True, schedule=True)
 
     schedule_dfs = []
     for stop, train in zip(loader.stop_dict.items(), loader.train_dict.items()):
@@ -31,7 +31,10 @@ def load_range_schedule(start_date, end_date,
     schedule_df = schedule_df.applymap(lambda x: line.stop_idx(x) if not isinstance(x, float) else x)
     schedule_df.reset_index(inplace=True)
     schedule_df.reset_index(inplace=True)
-    return schedule_df
+
+    data['schedule_df'] = schedule_df
+    data['loader'] = loader
+    return data
 
 def plot_alert(alert_time, observing_stop, alert_stop,
                stop_filter, route_filter,

@@ -85,6 +85,10 @@ class MergedEntity:
     @property
     @lru_cache(1)
     def next_stop_time_raw(self):
+        """
+        Get UNIX time in minutes for the time this entity is scheduled to arrive at the next stop
+        :return:
+        """
         if self._next_stop():
             return int(self._next_stop().arrival.time) // 60
         else:
@@ -93,6 +97,10 @@ class MergedEntity:
     @property
     @lru_cache(1)
     def current_stop_time_raw(self):
+        """
+        Get UNIX time in minutes for the time this entity was observed at the current stop
+        :return:
+        """
         if self._next_stop():
             return int(self._current_stop().arrival.time)
         else:
