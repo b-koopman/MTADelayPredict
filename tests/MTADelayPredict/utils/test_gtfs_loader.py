@@ -1,8 +1,6 @@
 from nose.tools import assert_equal
 
-from MTADelayPredict.utils import gtfs_loader
-import pandas as pd
-import os
+from MTADelayPredict.data_processing import gtfs_loader
 
 
 def testDatetime():

@@ -11,4 +11,4 @@ seaborn
 dash
 chart_studio
 redis
-flash_caching
+flask_caching

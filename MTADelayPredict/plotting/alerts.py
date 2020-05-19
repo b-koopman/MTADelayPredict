@@ -1,13 +1,10 @@
 """
 Utility functions for plotting train traffic around alerts
 """
-import sys
-import os
 import pandas as pd
 
-from MTADelayPredict.utils import gtfs_loader
+from MTADelayPredict.data_processing import gtfs_loader
 from MTADelayPredict.subway_line import SubwayLine, N_STOP_LIST
-from MTADelayPredict.stop import Stop
 from MTADelayPredict.plotting import traffic
 
 def load_range_schedule(start_date, end_date,

@@ -1,15 +1,9 @@
-from MTADelayPredict.utils import gtfs_loader
-
 import sys
 import os
 import pandas as pd
 import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(os.path.join('DataExploration.ipynb')))))
-from MTADelayPredict.utils import gtfs_loader, stop_info
-from MTADelayPredict.subway_line import SubwayLine, N_STOP_LIST
-from MTADelayPredict.stop import Stop
-from importlib import reload
 from MTADelayPredict.plotting import alerts
 
 def test_basic_load():

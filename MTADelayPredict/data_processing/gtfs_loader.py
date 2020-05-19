@@ -1,5 +1,5 @@
 from MTADelayPredict.utils.utils import grouper, gtfs_datetime
-from MTADelayPredict.utils.merged_entity import MergedEntity
+from MTADelayPredict.data_processing.merged_entity import MergedEntity
 import pandas as pd
 
 # Load in the protobuf APIs
@@ -132,7 +132,7 @@ class GTFSLoader:
         import os
         import google.protobuf.message as message
         import numpy as np
-        from collections import defaultdict, OrderedDict
+        from collections import defaultdict
 
         from MTADelayPredict.subway_line import N_STOP_LIST
 

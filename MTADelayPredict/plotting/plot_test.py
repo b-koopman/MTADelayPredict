@@ -1,9 +1,6 @@
 # relative MTADelayPredict Project
-import sys
-import os
 import pandas as pd
 
-from MTADelayPredict.utils import gtfs_loader
 from MTADelayPredict.plotting import alerts
 
 alert_time = pd.Timestamp('2018-08-07 16:51:00', tz='US/Eastern')
