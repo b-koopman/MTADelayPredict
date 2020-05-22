@@ -67,12 +67,13 @@ class MergedEntity:
         """
         if self.is_stopped:
             if len(self.trip_entity.trip_update.stop_time_update) < 2:
-                return None            
+                return None
             return self.trip_entity.trip_update.stop_time_update[1]
         else:
             if len(self.trip_entity.trip_update.stop_time_update) < 1:
                 return None
-    
+            return self.trip_entity.trip_update.stop_time_update[0]
+
     @property
     @lru_cache(1)
     def next_stop_id(self):
@@ -81,7 +82,39 @@ class MergedEntity:
         else:
             return None
 
-        
+    @property
+    def n_upcoming_stops(self):
+        if self.is_stopped:
+            return len(self.trip_entity.trip_update.stop_time_update) - 1
+        else:
+            return len(self.trip_entity.trip_update.stop_time_update)
+
+    @lru_cache(32)
+    def _upcoming_stop(self, idx):
+        """
+        Return the upcoming stop at position "idx"
+        :param idx: index of upcoming stop for this train, where idx < n_upcoming_stops
+        :return: stop_id
+        """
+        if idx >= self.n_upcoming_stops:
+            raise ValueError("index {} exceeds number of upcoming stops {}", idx, self.n_upcoming_stops)
+
+        stop_idx = idx
+        if self.is_stopped:
+            stop_idx += 1
+
+        return self.trip_entity.trip_update.stop_time_update[stop_idx]
+
+    @lru_cache(32)
+    def upcoming_stop_id(self, idx):
+        stop = self._upcoming_stop(idx)
+        return stop.stop_id
+
+    @lru_cache(32)
+    def upcoming_stop_time_raw(self, idx):
+        stop = self._upcoming_stop(idx)
+        return int(stop.arrival.time) // 60
+
     @property
     @lru_cache(1)
     def next_stop_time_raw(self):
@@ -102,7 +135,7 @@ class MergedEntity:
         :return:
         """
         if self._next_stop():
-            return int(self._current_stop().arrival.time)
+            return int(self._current_stop().arrival.time) // 60
         else:
             return 0
     
@@ -122,7 +155,7 @@ class MergedEntity:
     @property
     @lru_cache(1)
     def current_stop_time(self):
-        return pd.to_datetime(self.current_stop_time_raw, unit='s', utc=True)
+        return pd.to_datetime(self.current_stop_time_raw, unit='m', utc=True)
     
     @property
     @lru_cache(1)

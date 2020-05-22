@@ -65,11 +65,10 @@ class GTFSLoader:
 
         self.data_dir = data_dir
         self.train_line = train_line
-        self.train_dict = defaultdict(dict)
-    
+
         self.stopped_at_df = pd.DataFrame()
         self.next_train_df = pd.DataFrame()
-        self.next_scheduled_arrival_df =  pd.DataFrame()
+        self.next_scheduled_arrival_df = pd.DataFrame()
         
     def list_files(self, start_date, end_date):
         """
@@ -95,32 +94,6 @@ class GTFSLoader:
         
         return file_list
 
-    # def load_range(self, start_date, end_date, stop_filter='.*', route_filter='.*', verbose=False, schedule=False):
-    #     """
-    #     Load files for a given date range and return the resulting dataframe.
-    #     This new data replaces any existing loaded data.
-    #
-    #     If verbose, it will display a progress bar
-    #     """
-    #     import re
-    #     import os
-    #     import google.protobuf.message as message
-    #     import numpy as np
-    #     from collections import defaultdict, OrderedDict
-    #
-    #     start_min = (start_date - pd.Timestamp("1970-01-01").astimezone('US/Eastern')) // pd.Timedelta('1s') // 60
-    #     end_min = (end_date - pd.Timestamp("1970-01-01").astimezone('US/Eastern')) // pd.Timedelta('1s') // 60
-    #     # Add a few minutes, since sometimes we get updates from the futures
-    #     print(end_min)
-    #     end_min += 120
-    #     print(end_min)
-    #     stop_id_index = STOP_LIST
-    #     new_stop_ids = set()
-    #     stop_id_dict = {s:i for i,s in enumerate(stop_id_index)}
-    #     stopped_at_np = np.zeros((end_min-start_min, len(stop_id_index)))
-    #     next_train_np = np.zeros((end_min-start_min, len(stop_id_index)))
-    #     next_scheduled_arrival_np = np.zeros((end_min-start_min, len(stop_id_index)))
-
     def load_range(self, start_date, end_date, stop_filter='.*', route_filter='.*', verbose=False, schedule=False):
         """
         Load files for a given date range and return the resulting dataframe.
@@ -133,6 +106,7 @@ class GTFSLoader:
         import google.protobuf.message as message
         import numpy as np
         from collections import defaultdict
+        from collections import OrderedDict
 
         from MTADelayPredict.subway_line import N_STOP_LIST
 
@@ -149,14 +123,19 @@ class GTFSLoader:
         stopped_at_np[:] = np.nan
         next_train_np = np.zeros((end_min-start_min, len(stop_id_index)))
         next_train_np[:] = np.nan
-        next_scheduled_arrival_np = np.zeros((end_min-start_min, len(stop_id_index)))
-        next_scheduled_arrival_np[:] = np.nan
+
+        # Keep track of when every train thinks it is going to arrive at each station
+        def new_scheduled_arrival():
+            next_scheduled_arrival_np = np.zeros((end_min-start_min, len(stop_id_index)))
+            next_scheduled_arrival_np[:] = np.nan
+            return next_scheduled_arrival_np
+        train_schedule_np_dict = defaultdict(new_scheduled_arrival)
         
         if schedule:
-            self.train_dict = defaultdict(list)
-            self.stop_dict = defaultdict(list)
-            self.time_dict = defaultdict(list)
-            
+            self.stop_dict =  defaultdict(list)
+            self.time_dict =  defaultdict(list)
+
+
         if verbose:
             import progressbar
         
@@ -201,51 +180,57 @@ class GTFSLoader:
                     time_idx = merged_entity.time_raw - start_min
                     stop_idx = stop_id_dict.get(merged_entity.current_stop_id, -1)
                     if stop_idx >= 0:
-                        stopped_at_np[time_idx, stop_idx] = merged_entity.train_id
-                        if schedule:
-                            if merged_entity.current_stop_id not in self.train_dict[merged_entity.train_id_str]:
-                                #self.train_dict[merged_entity.train_id_str][merged_entity.current_stop_id] = merged_entity.time.tz_convert('US/Eastern')
-                                self.stop_dict[merged_entity.train_id_str].append(merged_entity.current_stop_id)
-                                self.time_dict[merged_entity.train_id_str].append(merged_entity.current_stop_time.tz_convert('US/Eastern'))
-                                self.train_dict[merged_entity.train_id_str].append(merged_entity.current_stop_time.tz_convert('US/Eastern'))
+                        self.stop_dict[merged_entity.train_id_str].append(merged_entity.current_stop_id)
+                        self.time_dict[merged_entity.train_id_str].append(merged_entity.current_stop_time.tz_convert('US/Eastern'))
                     else:
                         new_stop_ids.add(merged_entity.current_stop_id)
-                
-                # If there is a next stop specified, set the next arrival time for that station
-                # Sometimes there might be multiple trains scheduled to arrive somewhere next, so use the min
-                if merged_entity.next_stop_id and merged_entity.is_stop_match(stop_filter, merged_entity.next_stop_id) and merged_entity.next_stop_id in stop_id_dict:
-                    time_idx = merged_entity.time_raw - start_min
-                    stop_idx = stop_id_dict.get(merged_entity.next_stop_id, -1)
-                    if stop_idx >= 0:
-                        current_val = next_scheduled_arrival_np[time_idx, stop_idx]
-                        new_val = merged_entity.next_stop_time_raw
 
-                        if new_val < current_val or np.isnan(current_val):
-                            next_train_np[time_idx, stop_idx] = merged_entity.train_id
-                            next_scheduled_arrival_np[time_idx, stop_idx] = new_val
-                    else:
-                        new_stop_ids.add(merged_entity.next_stop_id)
-                
-                
+                next_scheduled_arrival_np = train_schedule_np_dict[merged_entity.train_id_str]
+                time_idx = merged_entity.time_raw - start_min
+                stop_idx = stop_id_dict.get(merged_entity.current_stop_id, -1)
+
+                if stop_idx >= 0:
+                    next_scheduled_arrival_np[time_idx, stop_idx] = \
+                        merged_entity.current_stop_time_raw
+                else:
+                    new_stop_ids.add(merged_entity.current_stop_id)
+
+                # Iterate through next stops and see when then next train is scheduled to arrive
+                if merged_entity.n_upcoming_stops > 0:
+                    for upcoming_idx in range(merged_entity.n_upcoming_stops):
+                        if merged_entity.is_stop_match(stop_filter, merged_entity.upcoming_stop_id(upcoming_idx)):
+                            stop_idx = stop_id_dict.get(merged_entity.upcoming_stop_id(upcoming_idx), -1)
+
+                            if stop_idx >= 0:
+                                next_scheduled_arrival_np[time_idx, stop_idx] = \
+                                    merged_entity.upcoming_stop_time_raw(upcoming_idx)
+                            else:
+                                new_stop_ids.add(merged_entity.upcoming_stop_id(upcoming_idx))
+
         if verbose:
             bar.finish()
         print("New stops:\n{}".format(new_stop_ids))
             
-        self.stopped_at_df = pd.DataFrame(stopped_at_np, index=range(start_min, end_min), columns=stop_id_index)
         self.next_train_df = pd.DataFrame(next_train_np, index=range(start_min, end_min), columns=stop_id_index)
-        self.next_scheduled_arrival_df =  pd.DataFrame(next_scheduled_arrival_np, index=range(start_min, end_min), columns=stop_id_index)
-        
-        self.stopped_at_df = self.stopped_at_df.sort_index()
-        self.next_train_df = self.next_train_df.sort_index()
-        self.next_scheduled_arrival_df = self.next_scheduled_arrival_df.sort_index()
-        self.stopped_at_df.index = self.stopped_at_df.index.map(lambda x: pd.to_datetime(x, unit='m', utc=True)).tz_convert('US/Eastern')
-        self.next_train_df.index = self.next_train_df.index.map(lambda x: pd.to_datetime(x, unit='m', utc=True)).tz_convert('US/Eastern')
-        self.next_scheduled_arrival_df.index = self.next_scheduled_arrival_df.index.map(lambda x: pd.to_datetime(x, unit='m', utc=True)).tz_convert('US/Eastern')
 
-        ret_dict =  {'stopped_at':self.stopped_at_df, \
-                    'next_train_id':self.next_train_df, \
-                    'next_scheduled_arrival': self.next_scheduled_arrival_df}
+        self.next_train_df = self.next_train_df.sort_index()
+        self.next_train_df.index = self.next_train_df.index.map(lambda x: pd.to_datetime(x, unit='m', utc=True)).tz_convert('US/Eastern')
+
+        # Create a dataframe describing each train's expected arrival time at a given station
+        self.train_schedule_dict = dict()
+        for train_id, train_schedule_np in train_schedule_np_dict.items():
+            train_schedule_df = pd.DataFrame(train_schedule_np, index=range(start_min, end_min), columns=stop_id_index)
+            train_schedule_df = train_schedule_df.sort_index()
+            self.train_schedule_dict[train_id] = train_schedule_df
+
+        self.next_scheduled_arrival_df = pd.concat(self.train_schedule_dict.values(), axis=1,
+                                                   keys=self.train_schedule_dict.keys()).stack()
+
+
 #        if schedule:
 #            ret_dict['schedule_df'] = pd.DataFrame.from_dict(self.train_dict)
-        
-        return ret_dict
+
+        return None
+
+
+
