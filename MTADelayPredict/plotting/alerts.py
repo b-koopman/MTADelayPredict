@@ -3,35 +3,10 @@ Utility functions for plotting train traffic around alerts
 """
 import pandas as pd
 
-from MTADelayPredict.data_processing import gtfs_loader
+from MTADelayPredict.data_processing import train_data
 from MTADelayPredict.subway_line import SubwayLine, N_STOP_LIST
 from MTADelayPredict.plotting import traffic
 
-def load_range_schedule(start_date, end_date,
-                        stop_filter, route_filter,
-                        data_dir,
-                        train_line = 'nqrw'):
-
-    loader = gtfs_loader.GTFSLoader(data_dir=data_dir,
-                                    train_line='nqrw')
-    data = loader.load_range(start_date, end_date, stop_filter=stop_filter, route_filter=route_filter, verbose=True, schedule=True)
-
-    schedule_dfs = []
-    for stop, train in zip(loader.stop_dict.items(), loader.train_dict.items()):
-        schedule_dfs.append(pd.DataFrame(stop[1], index=train[1], columns=[stop[0]]))
-
-    # Change to numerical index for stops so plotting is a little easier
-    line = SubwayLine(N_STOP_LIST)
-    schedule_df = pd.concat(schedule_dfs)
-    schedule_df.sort_index(inplace=True)
-    schedule_df = schedule_df[start_date:end_date]
-    schedule_df = schedule_df.applymap(lambda x: line.stop_idx(x) if not isinstance(x, float) else x)
-    schedule_df.reset_index(inplace=True)
-    schedule_df.reset_index(inplace=True)
-
-    data['schedule_df'] = schedule_df
-    data['loader'] = loader
-    return data
 
 def plot_alert(alert_time, observing_stop, alert_stop,
                stop_filter, route_filter,
@@ -41,7 +16,7 @@ def plot_alert(alert_time, observing_stop, alert_stop,
                end_window = 60,
                ):
     """
-    Create a windowed plot of train traffic around a certain train alert time
+    Create a windowed plot of train traffic around a certain train alert time, using matplotlib
 
     :param alert_time: Time alert was seen
     :param observing_stop: Stop we're looking for effects at, annotate this stop for comparison (green)
@@ -55,7 +30,7 @@ def plot_alert(alert_time, observing_stop, alert_stop,
     end_time = alert_time + pd.Timedelta(end_window, unit='m')
 
     # Fetch schedule data and plot
-    schedule_df = load_range_schedule(start_time, end_time, stop_filter, route_filter, data_dir)
+    schedule_df = train_data.load_range_schedule(start_time, end_time, stop_filter, route_filter, data_dir)
     ax = traffic.plot_traffic(start_time, end_time, schedule_df)
 
     current_line = SubwayLine(N_STOP_LIST)
